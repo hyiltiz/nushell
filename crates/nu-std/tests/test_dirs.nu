@@ -1,6 +1,21 @@
 use std assert
 use std assert
 use std log
+# ====: BEGIN :=====
+# FIXME: the tests above seem larger than the tests below
+#        so we should probably keep the ones above
+#        WHY `std assert` is listed twice?
+use std "assert length"
+use std "assert equal"
+use std "log info"
+# ====:  END  :=====
+use std "dirs next"
+use std "dirs prev"
+use std "dirs add"
+use std "dirs drop"
+use std "dirs show"
+use std "dirs cd"
+use std "dirs goto"
 
 # A couple of nuances to understand when testing module that exports environment:
 # Each 'use' for that module in the test script will execute the def-env block.
@@ -51,7 +66,10 @@ def dirs_command [] {
     use std dirs
 
     # Stack: [BASE]
-    assert equal [$c.base_path] $env.DIRS_LIST "list is just pwd after initialization"
+    cd $base_path
+    
+    assert length $env.DIRS_LIST 1 "list is just pwd after initialization"
+    assert equal $base_path $env.DIRS_LIST.0 "list is just pwd after initialization"
 
     dirs next
     assert equal $c.base_path $env.DIRS_LIST.0 "next wraps at end of list"
@@ -75,7 +93,10 @@ def dirs_command [] {
     assert equal $c.path_a $env.PWD "prev wraps at start of list"
     cur_dir_check $c.path_a "prev wraps to end from start of list"
 
-    # Stack becomes: [base PATH_B]
+    dirs cd $path_b
+    assert equal $path_b $env.PWD "cd actually changes directory"
+    assert equal $path_b ($env.DIRS_LIST | get $env.DIRS_POSITION) "cd updates dirs list"
+
     dirs drop
     assert length $env.DIRS_LIST 2 "drop removes from list"
     assert equal $env.PWD $c.path_b "drop changes PWD to previous in list (before dropped element)"

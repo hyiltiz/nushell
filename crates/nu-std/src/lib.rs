@@ -16,17 +16,50 @@ pub fn load_standard_library(
         // in their working directory.
         let std_dir = PathBuf::from(NU_STDLIB_VIRTUAL_DIR).join("std");
 
-        let mut std_files = vec![
+        // these modules are loaded in the order they appear in this list
+        #[rustfmt::skip]
+        let submodules = vec![
+            // helper modules that could be used in other parts of the library
+            ("log", include_str!("../lib/log.nu")),
+
+            // the rest of the library
             ("mod.nu", include_str!("../std/mod.nu")),
-            ("testing.nu", include_str!("../std/testing.nu")),
-            ("dirs.nu", include_str!("../std/dirs.nu")),
-            ("dt.nu", include_str!("../std/dt.nu")),
-            ("help.nu", include_str!("../std/help.nu")),
-            ("iter.nu", include_str!("../std/iter.nu")),
-            ("log.nu", include_str!("../std/log.nu")),
             ("assert.nu", include_str!("../std/assert.nu")),
-            ("xml.nu", include_str!("../std/xml.nu")),
             ("input.nu", include_str!("../std/input.nu")),
+            ("dirs", include_str!("../std/dirs.nu")), // moved from lib to std
+            // FIXME: the files above are in ../std/*.nu
+            //        the ones below are in ../lib/*.nu
+            //        Is this expected?
+            ("iter", include_str!("../lib/iter.nu")),
+            ("help", include_str!("../lib/help.nu")),
+            ("testing", include_str!("../lib/testing.nu")),
+            ("xml", include_str!("../lib/xml.nu")),
+            ("dt", include_str!("../lib/dt.nu")),
+        ];
+
+        // Define commands to be preloaded into the default (top level, unprefixed) namespace.
+        // User can invoke these without having to `use std` beforehand.
+        // Entries are: (name to add to default namespace, path under std to find implementation)
+        //
+        // Conventionally, for a command implemented as `std foo`, the name added
+        // is either `std foo` or bare `foo`, not some arbitrary rename.
+
+        #[rustfmt::skip]
+        let prelude = vec![
+            ("std help", "help"),
+            ("std help commands", "help commands"),
+            ("std help aliases", "help aliases"),
+            ("std help modules", "help modules"),
+            ("std help externs", "help externs"),
+            ("std help operators", "help operators"),
+
+            ("enter", "enter"),
+            ("shells", "shells"),
+            ("g", "g"),
+            ("n", "n"),
+            ("p", "p"),
+            ("dexit", "dexit"),
+            ("cd", "cd"),
         ];
 
         let mut working_set = StateWorkingSet::new(engine_state);
