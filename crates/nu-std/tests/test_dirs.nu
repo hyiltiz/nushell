@@ -7,15 +7,9 @@ use std log
 #        WHY `std assert` is listed twice?
 use std "assert length"
 use std "assert equal"
+use std "assert not equal"
 use std "log info"
 # ====:  END  :=====
-use std "dirs next"
-use std "dirs prev"
-use std "dirs add"
-use std "dirs drop"
-use std "dirs show"
-use std "dirs cd"
-use std "dirs goto"
 
 # A couple of nuances to understand when testing module that exports environment:
 # Each 'use' for that module in the test script will execute the def-env block.
@@ -23,6 +17,12 @@ use std "dirs goto"
 
 #[before-each]
 def before-each [] {
+
+# A couple of nuances to understand when testing module that exports environment:
+# Each 'use' for that module in the test script will execute the export def-env block.
+# PWD at the time of the `use` will be what the export def-env block will see.
+
+export def setup [] {
     # need some directories to play with
     let base_path = ($nu.temp-path | path join $"test_dirs_(random uuid)")
     let path_a = ($base_path | path join "a")
@@ -67,9 +67,25 @@ def dirs_command [] {
 
     # Stack: [BASE]
     cd $base_path
+=======
+export def test_dirs_command [] {
+    # careful with order of these statements!
+    # must capture value of $in before executing `use`s
+    let $c = $in    
+
+    # must set PWD *befure* doing `use ` that will run the export def-env block in dirs module.
+    cd $c.base_path
+
+    # must execute these uses for the UOT commands *after* the test and *not* just put them at top of test module.
+    # the export def-env gets messed up
+    use std "dirs next"
+    use std "dirs prev"
+    use std "dirs add"
+    use std "dirs drop"
+    use std "dirs show"
+    use std "dirs goto"
     
-    assert length $env.DIRS_LIST 1 "list is just pwd after initialization"
-    assert equal $base_path $env.DIRS_LIST.0 "list is just pwd after initialization"
+    assert equal [$c.base_path] $env.DIRS_LIST "list is just pwd after initialization"
 
     dirs next
     assert equal $c.base_path $env.DIRS_LIST.0 "next wraps at end of list"
@@ -154,4 +170,28 @@ def dirs_cd [] {
     dirs next
     cur_ring_check $c.path_b 0 "cd updates current position in non-empty ring"
     assert equal [$c.path_b $c.path_b] $env.DIRS_LIST "cd updated both positions in ring"
+
+    dirs drop
+    assert length $env.DIRS_LIST 2 "drop removes from list"
+    assert equal $c.base_path $env.PWD "drop changes PWD to next in list (after dropped element)"
+
+    assert equal (dirs show) [[active path]; [true $c.base_path] [false $c.path_b]] "show table contains expected information"
+}
+
+export def test_dirs_cdhook [] {
+    let c = $in
+    cd $c.base_path
+
+    use std "dirs cdhook"
+
+    
+    ##log info $"env2 is ($env | columns)"    
+    assert equal $c.base_path ($env.DIRS_LIST.0) "PWD in sync with ring 1"
+    
+    dirs cdhook $c.path_b $c.path_b
+    
+
+    dirs cdhook $c.base_path $c.path_a
+    assert equal $c.path_a $env.DIRS_LIST.0 "PWD changed in ring 2"
+
 }
